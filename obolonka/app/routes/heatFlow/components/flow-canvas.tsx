@@ -42,6 +42,9 @@ export function FlowCanvas({ sidebarWidth }: FlowCanvasProps): React.ReactElemen
     const [edges, setEdges, onEdgesChange] = useEdgesState<Edge>([]);
     const [reactFlowInstance, setReactFlowInstance] = useState<ReactFlowInstance<AppNode, Edge> | null>(null);
 
+    const [isConfigOpen, setIsConfigOpen] = useState(false);
+    const [nodeForConfig, setNodeForConfig] = useState<AppNode | null>(null);
+
     const updateHouseConnections = useCallback((currentEdges: Edge[]) => {
         setNodes((nds) => {
             return nds.map((node) => {
@@ -139,9 +142,14 @@ export function FlowCanvas({ sidebarWidth }: FlowCanvasProps): React.ReactElemen
         [reactFlowInstance, nodes.length, setNodes]
     );
 
-    const onNodeClick = (_: React.MouseEvent, node: AppNode) => {
-        setSelectedNode(node);
-    };
+    const onNodeClick = useCallback((_: React.MouseEvent, node: AppNode) => {
+        setSelectedNode((prevSelected: AppNode | null) => {
+            if (prevSelected?.id === node.id) {
+                return null;
+            }
+            return node;
+        });
+    }, []);
 
     const updateNodeData = useCallback((nodeId: string, newData: Partial<NodeData>) => {
         console.log('Updating node:', nodeId, newData);
@@ -159,6 +167,9 @@ export function FlowCanvas({ sidebarWidth }: FlowCanvasProps): React.ReactElemen
                 return node;
             })
         );
+
+        setIsConfigOpen(false);
+        setNodeForConfig(null);
     }, [setNodes]);
 
     const getConnectionStats = useCallback((): ConnectionStats => {
@@ -176,6 +187,12 @@ export function FlowCanvas({ sidebarWidth }: FlowCanvasProps): React.ReactElemen
             totalConnections: edges.length,
         };
     }, [nodes, edges]);
+
+
+    const onNodeDoubleClick = (_: React.MouseEvent, node: AppNode) => {
+        setNodeForConfig(node);
+        setIsConfigOpen(true);
+    };
 
     const stats = getConnectionStats();
 
@@ -244,6 +261,8 @@ export function FlowCanvas({ sidebarWidth }: FlowCanvasProps): React.ReactElemen
                     edges={edges}
                     onNodesChange={onNodesChange}
                     onNodeClick={onNodeClick}
+                    onNodeDoubleClick={onNodeDoubleClick}
+
                     onEdgesChange={onEdgesChange}
                     onEdgesDelete={onEdgesDelete}
                     onConnect={onConnect}
@@ -269,11 +288,14 @@ export function FlowCanvas({ sidebarWidth }: FlowCanvasProps): React.ReactElemen
                     <Controls />
                 </ReactFlow>
 
-                {selectedNode && (
+                {isConfigOpen && nodeForConfig && (
                     <ConfigForm
-                        node={selectedNode}
-                        onUpdate={updateNodeData}
-                        onClose={() => setSelectedNode(null)}
+                        node={nodeForConfig}
+                        onUpdate={(nodeId, data) => updateNodeData(nodeId, data)}
+                        onClose={() => {
+                            setIsConfigOpen(false);
+                            setNodeForConfig(null);
+                        }}
                     />
                 )}
             </div>
